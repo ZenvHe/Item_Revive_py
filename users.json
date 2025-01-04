@@ -1,0 +1,18 @@
+[
+    {
+        "username": "user1",
+        "password": "123456",
+        "address": "1",
+        "contact_info": "1",
+        "user_type": "user",
+        "is_approved": true
+    },
+    {
+        "username": "admin",
+        "password": "123456",
+        "address": "1",
+        "contact_info": "1",
+        "user_type": "admin",
+        "is_approved": true
+    }
+]

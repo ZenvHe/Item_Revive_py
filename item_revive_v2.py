@@ -1,6 +1,6 @@
 import json
 import tkinter as tk
-from tkinter import simpledialog, messagebox, filedialog
+from tkinter import simpledialog, messagebox
 from abc import ABC, abstractmethod
 
 # 定义物品类型类
@@ -74,110 +74,82 @@ def load_item_types(filename="item_types.json"):
 
 # 定义抽象基类 Item
 class Item(ABC):
-    def __init__(self, name, description, location, contact_phone, email):
+    def __init__(self, name, description, location, contact_phone, email, **kwargs):
         self.name = name
         self.description = description
         self.location = location
         self.contact_phone = contact_phone
         self.email = email
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
     @abstractmethod
     def get_details(self):
         pass
 
     def to_dict(self):
-        return {
+        data = {
             "name": self.name,
             "description": self.description,
             "location": self.location,
             "contact_phone": self.contact_phone,
             "email": self.email
         }
+        for attr in self.attributes:
+            data[attr] = getattr(self, attr)
+        return data
 
     @staticmethod
     def from_dict(data):
         item_type = data.get("type")
-        if item_type == "food":
-            return FoodItem.from_dict(data)
-        elif item_type == "book":
-            return BookItem.from_dict(data)
+        if item_type in item_classes:
+            return item_classes[item_type].from_dict(data)
         else:
             raise ValueError("Unknown item type")
 
-# 定义食品类物品 FoodItem
-class FoodItem(Item):
-    def __init__(self, name, description, location, contact_phone, email, expiration_date, quantity):
-        super().__init__(name, description, location, contact_phone, email)
-        self.expiration_date = expiration_date
-        self.quantity = quantity
+# 动态创建的物品种类类
+item_classes = {}
 
+def create_item_class(name, attributes):
     def get_details(self):
-        return (f"物品名称: {self.name}\n"
-                f"物品说明: {self.description}\n"
-                f"所在地址: {self.location}\n"
-                f"联系人手机: {self.contact_phone}\n"
-                f"邮箱: {self.email}\n"
-                f"保质期: {self.expiration_date}\n"
-                f"数量: {self.quantity}")
+        details = (f"物品名称: {self.name}\n"
+                   f"物品说明: {self.description}\n"
+                   f"所在地址: {self.location}\n"
+                   f"联系人手机: {self.contact_phone}\n"
+                   f"邮箱: {self.email}\n")
+        for attr in attributes:
+            details += f"{attr}: {getattr(self, attr)}\n"
+        return details
 
     def to_dict(self):
-        data = super().to_dict()
-        data.update({
-            "type": "food",
-            "expiration_date": self.expiration_date,
-            "quantity": self.quantity
-        })
+        data = super(type(self), self).to_dict()
+        data.update({attr: getattr(self, attr) for attr in attributes})
+        data["type"] = name
         return data
 
-    @staticmethod
     def from_dict(data):
-        return FoodItem(
-            data["name"],
-            data["description"],
-            data["location"],
-            data["contact_phone"],
-            data["email"],
-            data["expiration_date"],
-            data["quantity"]
-        )
+        args = {
+            "name": data["name"],
+            "description": data["description"],
+            "location": data["location"],
+            "contact_phone": data["contact_phone"],
+            "email": data["email"]
+        }
+        for attr in attributes:
+            args[attr] = data[attr]
+        return type(name, (Item,), args)
 
-# 定义书籍类物品 BookItem
-class BookItem(Item):
-    def __init__(self, name, description, location, contact_phone, email, author, publisher):
-        super().__init__(name, description, location, contact_phone, email)
-        self.author = author
-        self.publisher = publisher
+    item_class = type(name, (Item,), {
+        "__init__": lambda self, name, description, location, contact_phone, email, **kwargs: Item.__init__(self, name, description, location, contact_phone, email, **kwargs),
+        "get_details": get_details,
+        "to_dict": to_dict,
+        "from_dict": from_dict,
+        "attributes": attributes  # 存储属性列表
+    })
+    item_classes[name] = item_class
+    return item_class
 
-    def get_details(self):
-        return (f"物品名称: {self.name}\n"
-                f"物品说明: {self.description}\n"
-                f"所在地址: {self.location}\n"
-                f"联系人手机: {self.contact_phone}\n"
-                f"邮箱: {self.email}\n"
-                f"作者: {self.author}\n"
-                f"出版社: {self.publisher}")
-
-    def to_dict(self):
-        data = super().to_dict()
-        data.update({
-            "type": "book",
-            "author": self.author,
-            "publisher": self.publisher
-        })
-        return data
-
-    @staticmethod
-    def from_dict(data):
-        return BookItem(
-            data["name"],
-            data["description"],
-            data["location"],
-            data["contact_phone"],
-            data["email"],
-            data["author"],
-            data["publisher"]
-        )
-    
+# 注册对话框
 class RegisterDialog:
     def __init__(self, parent, users):
         self.parent = parent
@@ -223,6 +195,7 @@ class RegisterDialog:
         messagebox.showinfo("注册成功", "您的注册申请已提交，等待管理员批准。")
         self.top.destroy()
 
+# 主窗口
 class MainWindow:
     def __init__(self, root, users, item_types):
         self.root = root
@@ -280,13 +253,10 @@ class MainWindow:
         user_root.protocol("WM_DELETE_WINDOW", self.on_close_user)  # 监听关闭事件
 
     def on_close_admin(self):
-        self.root.destroy()  # 重新显示主窗口
+        self.root.destroy()  # 销毁主窗口
 
     def on_close_user(self):
-        self.root.destroy()  # 重新显示主窗口
-
-    def manage_item_types(self):
-        AdminInterface(self.root, self.item_types)
+        self.root.destroy()  # 销毁主窗口
 
 # 管理员界面
 class AdminInterface:
@@ -319,6 +289,7 @@ class AdminInterface:
         self.item_types.append(item_type)
         self.listbox.insert(tk.END, name)
         save_item_types(self.item_types)
+        create_item_class(name, attributes)  # 动态创建新的物品种类类
 
     def modify_item_type(self):
         try:
@@ -339,6 +310,7 @@ class AdminInterface:
             self.listbox.delete(index)
             self.listbox.insert(index, name)
             save_item_types(self.item_types)
+            create_item_class(name, attributes)  # 动态创建或更新物品种类类
         except IndexError:
             messagebox.showerror("错误", "请选择要修改的物品类型")
 
@@ -346,14 +318,11 @@ class AdminInterface:
         for item_type in self.item_types:
             self.listbox.insert(tk.END, item_type.name)
 
-# 主窗口类
+# 用户界面
 class UserInterface:
     def __init__(self, root, item_types):
         self.root = root
-        self.root.title("物品复活软件")
-        #self.user = user
         self.item_types = item_types
-
         self.items = []
         self.filename = "items.json"
 
@@ -375,124 +344,94 @@ class UserInterface:
         self.load_items()
 
     def add_item(self):
-        category = self.choose_category()
-        if category:
-            self.create_item_dialog(category)
+        self.create_item_dialog()
 
-    def choose_category(self):
+    def create_item_dialog(self):
         top = tk.Toplevel(self.root)
-        top.title("选择物品类别")
+        top.title("添加物品")
 
         category_var = tk.StringVar(top)
-        category_var.set("食品")  # 默认值
+        category_var.set(self.item_types[0].name if self.item_types else "")  # 默认值
+        tk.Label(top, text="物品种类:").grid(row=0, column=0, sticky="e")
+        category_option = tk.OptionMenu(top, category_var, *[it.name for it in self.item_types])
+        category_option.grid(row=0, column=1, sticky="w")
 
-        tk.Label(top, text="请选择物品类别:").pack()
-        category_option = tk.OptionMenu(top, category_var, "食品", "书籍")
-        category_option.pack()
+        name_var = tk.StringVar(top)
+        description_var = tk.StringVar(top)
+        location_var = tk.StringVar(top)
+        contact_phone_var = tk.StringVar(top)
+        email_var = tk.StringVar(top)
 
-        def on_ok():
+        name_entry = tk.Entry(top, textvariable=name_var)
+        description_entry = tk.Entry(top, textvariable=description_var)
+        location_entry = tk.Entry(top, textvariable=location_var)
+        contact_phone_entry = tk.Entry(top, textvariable=contact_phone_var)
+        email_entry = tk.Entry(top, textvariable=email_var)
+
+        tk.Label(top, text="物品名称:").grid(row=1, column=0, sticky="e")
+        name_entry.grid(row=1, column=1, sticky="w")
+
+        tk.Label(top, text="物品说明:").grid(row=2, column=0, sticky="e")
+        description_entry.grid(row=2, column=1, sticky="w")
+
+        tk.Label(top, text="所在地址:").grid(row=3, column=0, sticky="e")
+        location_entry.grid(row=3, column=1, sticky="w")
+
+        tk.Label(top, text="联系人手机:").grid(row=4, column=0, sticky="e")
+        contact_phone_entry.grid(row=4, column=1, sticky="w")
+
+        tk.Label(top, text="邮箱:").grid(row=5, column=0, sticky="e")
+        email_entry.grid(row=5, column=1, sticky="w")
+
+        # 存储属性变量
+        attr_vars = {}
+
+        def update_attributes(*args):
+            for widget in top.winfo_children():
+                if isinstance(widget, tk.Entry) and widget not in [name_entry, description_entry, location_entry, contact_phone_entry, email_entry]:
+                    widget.destroy()
+
+            selected_category = category_var.get()
+            for item_type in self.item_types:
+                if item_type.name == selected_category:
+                    row = 6
+                    for attr in item_type.attributes:
+                        attr_var = tk.StringVar(top)
+                        attr_vars[attr] = attr_var  # 存储变量
+                        tk.Label(top, text=f"{attr}:").grid(row=row, column=0, sticky="e")
+                        tk.Entry(top, textvariable=attr_var, name=f"{attr}_var").grid(row=row, column=1, sticky="w")
+                        row += 1
+                    break
+
+        category_var.trace("w", update_attributes)
+
+        # 动态计算按钮的行号
+        row = 6 + len(self.item_types[0].attributes) if self.item_types else 6
+
+        tk.Button(top, text="确定", command=lambda: self.create_item(
+            category_var.get(), name_var.get(), description_var.get(), location_var.get(),
+            contact_phone_var.get(), email_var.get(), top)).grid(row=row, column=0, columnspan=2)
+
+    def create_item(self, category, name, description, location, contact_phone, email, top):
+        item_class = item_classes.get(category)
+        if item_class:
+            # 获取所有属性输入字段的值
+            attributes = {}
+            for attr in item_class.attributes:
+                attr_var = top.nametowidget(f"{attr}_var")
+                if attr_var:
+                    attributes[attr] = attr_var.get()
+                else:
+                    attributes[attr] = ""  # 如果没有找到对应的输入字段，使用默认值
+
+            # 创建物品实例
+            item = item_class(name, description, location, contact_phone, email, **attributes)
+            self.items.append(item)
+            self.listbox.insert(tk.END, name)
+            self.save_items()
             top.destroy()
-            return category_var.get()
-
-        tk.Button(top, text="确定", command=on_ok).pack()
-        top.wait_window()  # 等待窗口关闭
-        return category_var.get()
-
-    def create_item_dialog(self, category):
-        if category.lower() == "食品":
-            self.create_food_item_dialog()
-        elif category.lower() == "书籍":
-            self.create_book_item_dialog()
-
-    def create_food_item_dialog(self):
-        top = tk.Toplevel(self.root)
-        top.title("添加食品")
-
-        name_var = tk.StringVar(top)
-        description_var = tk.StringVar(top)
-        location_var = tk.StringVar(top)
-        contact_phone_var = tk.StringVar(top)
-        email_var = tk.StringVar(top)
-        expiration_date_var = tk.StringVar(top)
-        quantity_var = tk.StringVar(top)
-
-        tk.Label(top, text="物品名称:").grid(row=0, column=0, sticky="e")
-        tk.Entry(top, textvariable=name_var).grid(row=0, column=1, sticky="w")
-
-        tk.Label(top, text="物品说明:").grid(row=1, column=0, sticky="e")
-        tk.Entry(top, textvariable=description_var).grid(row=1, column=1, sticky="w")
-
-        tk.Label(top, text="所在地址:").grid(row=2, column=0, sticky="e")
-        tk.Entry(top, textvariable=location_var).grid(row=2, column=1, sticky="w")
-
-        tk.Label(top, text="联系人手机:").grid(row=3, column=0, sticky="e")
-        tk.Entry(top, textvariable=contact_phone_var).grid(row=3, column=1, sticky="w")
-
-        tk.Label(top, text="邮箱:").grid(row=4, column=0, sticky="e")
-        tk.Entry(top, textvariable=email_var).grid(row=4, column=1, sticky="w")
-
-        tk.Label(top, text="保质期:").grid(row=5, column=0, sticky="e")
-        tk.Entry(top, textvariable=expiration_date_var).grid(row=5, column=1, sticky="w")
-
-        tk.Label(top, text="数量:").grid(row=6, column=0, sticky="e")
-        tk.Entry(top, textvariable=quantity_var).grid(row=6, column=1, sticky="w")
-
-        tk.Button(top, text="确定", command=lambda: self.create_food_item(
-            name_var.get(), description_var.get(), location_var.get(),
-            contact_phone_var.get(), email_var.get(), expiration_date_var.get(),
-            int(quantity_var.get()), top)).grid(row=7, column=0, columnspan=2)
-
-    def create_food_item(self, name, description, location, contact_phone, email, expiration_date, quantity, top):
-        item = FoodItem(name, description, location, contact_phone, email, expiration_date, quantity)
-        self.items.append(item)
-        self.listbox.insert(tk.END, name)
-        self.save_items()
-        top.destroy()
-
-    def create_book_item_dialog(self):
-        top = tk.Toplevel(self.root)
-        top.title("添加书籍")
-
-        name_var = tk.StringVar(top)
-        description_var = tk.StringVar(top)
-        location_var = tk.StringVar(top)
-        contact_phone_var = tk.StringVar(top)
-        email_var = tk.StringVar(top)
-        author_var = tk.StringVar(top)
-        publisher_var = tk.StringVar(top)
-
-        tk.Label(top, text="物品名称:").grid(row=0, column=0, sticky="e")
-        tk.Entry(top, textvariable=name_var).grid(row=0, column=1, sticky="w")
-
-        tk.Label(top, text="物品说明:").grid(row=1, column=0, sticky="e")
-        tk.Entry(top, textvariable=description_var).grid(row=1, column=1, sticky="w")
-
-        tk.Label(top, text="所在地址:").grid(row=2, column=0, sticky="e")
-        tk.Entry(top, textvariable=location_var).grid(row=2, column=1, sticky="w")
-
-        tk.Label(top, text="联系人手机:").grid(row=3, column=0, sticky="e")
-        tk.Entry(top, textvariable=contact_phone_var).grid(row=3, column=1, sticky="w")
-
-        tk.Label(top, text="邮箱:").grid(row=4, column=0, sticky="e")
-        tk.Entry(top, textvariable=email_var).grid(row=4, column=1, sticky="w")
-
-        tk.Label(top, text="作者:").grid(row=5, column=0, sticky="e")
-        tk.Entry(top, textvariable=author_var).grid(row=5, column=1, sticky="w")
-
-        tk.Label(top, text="出版社:").grid(row=6, column=0, sticky="e")
-        tk.Entry(top, textvariable=publisher_var).grid(row=6, column=1, sticky="w")
-
-        tk.Button(top, text="确定", command=lambda: self.create_book_item(
-            name_var.get(), description_var.get(), location_var.get(),
-            contact_phone_var.get(), email_var.get(), author_var.get(),
-            publisher_var.get(), top)).grid(row=7, column=0, columnspan=2)
-
-    def create_book_item(self, name, description, location, contact_phone, email, author, publisher, top):
-        item = BookItem(name, description, location, contact_phone, email, author, publisher)
-        self.items.append(item)
-        self.listbox.insert(tk.END, name)
-        self.save_items()
-        top.destroy()
+        else:
+            messagebox.showerror("错误", "物品种类不匹配")
 
     def delete_item(self):
         try:
@@ -555,6 +494,10 @@ if __name__ == "__main__":
     # 初始化物品类型和用户列表
     item_types = load_item_types()
     users = load_users()
+
+    # 为每个物品种类动态创建继承类
+    for item_type in item_types:
+        create_item_class(item_type.name, item_type.attributes)
 
     # 主窗口
     app = MainWindow(root, users, item_types)

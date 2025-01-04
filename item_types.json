@@ -1,0 +1,16 @@
+[
+    {
+        "name": "Food",
+        "attributes": [
+            "expiration",
+            "quantity"
+        ]
+    },
+    {
+        "name": "Book",
+        "attributes": [
+            "author",
+            "publisher"
+        ]
+    }
+]
