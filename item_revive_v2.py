@@ -229,7 +229,7 @@ class MainWindow:
         UserInterface(user_root, self.item_types, user)
         user_root.protocol("WM_DELETE_WINDOW", self.on_close)  # 监听关闭事件
 
-    def on_close_admin(self):
+    def on_close(self):
         self.root.destroy()  # 销毁主窗口
 
 
