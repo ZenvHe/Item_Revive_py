@@ -1,1 +1,132 @@
-[]
+[
+    {
+        "name": "苹果",
+        "description": "新鲜的红富士苹果",
+        "location": "北京市朝阳区",
+        "contact_phone": "13800138000",
+        "email": "apple@example.com",
+        "added_by": "user1",
+        "type": "食品",
+        "保质期": "2025-02-01",
+        "数量": "100"
+    },
+    {
+        "name": "Python编程",
+        "description": "一本关于Python编程的书籍",
+        "location": "上海市浦东新区",
+        "contact_phone": "13900139000",
+        "email": "book@example.com",
+        "added_by": "user2",
+        "type": "书籍",
+        "作者": "张三",
+        "出版社": "人民出版社"
+    },
+    {
+        "name": "笔记本电脑",
+        "description": "高性能笔记本电脑",
+        "location": "广州市天河区",
+        "contact_phone": "13700137000",
+        "email": "laptop@example.com",
+        "added_by": "user3",
+        "type": "电子设备",
+        "型号": "ModelX-123",
+        "品牌": "BrandY"
+    },
+    {
+        "name": "运动鞋",
+        "description": "舒适轻便的运动鞋",
+        "location": "深圳市南山区",
+        "contact_phone": "13600136000",
+        "email": "shoes@example.com",
+        "added_by": "user4",
+        "type": "衣物",
+        "尺寸": "M",
+        "颜色": "Blue"
+    },
+    {
+        "name": "牛奶",
+        "description": "全脂牛奶",
+        "location": "北京市海淀区",
+        "contact_phone": "13500135000",
+        "email": "milk@example.com",
+        "added_by": "user5",
+        "type": "食品",
+        "保质期": "2025-03-15",
+        "数量": "50"
+    },
+    {
+        "name": "历史小说",
+        "description": "一部关于古代历史的小说",
+        "location": "南京市玄武区",
+        "contact_phone": "13400134000",
+        "email": "novel@example.com",
+        "added_by": "user6",
+        "type": "书籍",
+        "作者": "李四",
+        "出版社": "历史出版社"
+    },
+    {
+        "name": "智能手机",
+        "description": "最新款智能手机",
+        "location": "杭州市西湖区",
+        "contact_phone": "13300133000",
+        "email": "phone@example.com",
+        "added_by": "user7",
+        "type": "电子设备",
+        "型号": "ModelY-456",
+        "品牌": "BrandZ"
+    },
+    {
+        "name": "T恤衫",
+        "description": "纯棉T恤衫",
+        "location": "成都市武侯区",
+        "contact_phone": "13200132000",
+        "email": "tshirt@example.com",
+        "added_by": "user8",
+        "type": "衣物",
+        "尺寸": "L",
+        "颜色": "Red"
+    },
+    {
+        "name": "面包",
+        "description": "好吃",
+        "location": "东上院",
+        "contact_phone": "135xxxxxxxx",
+        "email": "test@sjtu.edu.cn",
+        "added_by": "user1",
+        "type": "食品",
+        "保质期": "2025-05-31",
+        "数量": "1"
+    },
+    {
+        "name": "螺丝刀",
+        "description": "多功能螺丝刀，适用于多种螺丝型号",
+        "location": "学生创新中心",
+        "contact_phone": "13800138000",
+        "email": "tools@example.com",
+        "added_by": "user1",
+        "type": "工具",
+        "数量": "1"
+    },
+    {
+        "name": "电钻",
+        "description": "便携式电钻，适合家庭和小型工程使用",
+        "location": "工具箱",
+        "contact_phone": "13900139000",
+        "email": "drill@example.com",
+        "added_by": "admin",
+        "type": "工具",
+        "数量": "1"
+    },
+    {
+        "name": "test",
+        "description": "1",
+        "location": "2",
+        "contact_phone": "3",
+        "email": "4",
+        "added_by": "user1",
+        "type": "食品",
+        "保质期": "5",
+        "数量": "6"
+    }
+]

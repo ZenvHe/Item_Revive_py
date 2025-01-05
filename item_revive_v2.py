@@ -1,7 +1,11 @@
 import json
 import tkinter as tk
 from tkinter import simpledialog, messagebox
+from tkinter import font
 from abc import ABC, abstractmethod
+
+def MiSans(size=12, weight="normal"):
+    return font.Font(family="MiSans", size=size, weight=weight)
 
 # 定义物品类型类
 class ItemType:
@@ -59,12 +63,12 @@ def load_users(filename="users.json"):
 # 保存和加载物品类型信息
 def save_item_types(item_types, filename="item_types.json"):
     item_types_data = [{"name": it.name, "attributes": it.attributes} for it in item_types]
-    with open(filename, "w") as file:
-        json.dump(item_types_data, file, indent=4)
+    with open(filename, "w", encoding="utf-8") as file:
+        json.dump(item_types_data, file, ensure_ascii=False, indent=4)
 
 def load_item_types(filename="item_types.json"):
     try:
-        with open(filename, "r") as file:
+        with open(filename, "r", encoding="utf-8") as file:
             item_types_data = json.load(file)
             return [ItemType(it["name"], it["attributes"]) for it in item_types_data]
     except FileNotFoundError:
@@ -74,12 +78,13 @@ def load_item_types(filename="item_types.json"):
 
 # 定义抽象基类 Item
 class Item(ABC):
-    def __init__(self, name, description, location, contact_phone, email, **kwargs):
+    def __init__(self, name, description, location, contact_phone, email, added_by, **kwargs):
         self.name = name
         self.description = description
         self.location = location
         self.contact_phone = contact_phone
         self.email = email
+        self.added_by = added_by
         for key, value in kwargs.items():
             setattr(self, key, value)
 
@@ -93,17 +98,31 @@ class Item(ABC):
             "description": self.description,
             "location": self.location,
             "contact_phone": self.contact_phone,
-            "email": self.email
+            "email": self.email,
+            "added_by": self.added_by,
+            "type": self.__class__.__name__
         }
-        for attr in self.attributes:
-            data[attr] = getattr(self, attr)
+        for key, value in self.__dict__.items():
+            if key not in data:
+                data[key] = value
         return data
 
     @staticmethod
     def from_dict(data):
         item_type = data.get("type")
         if item_type in item_classes:
-            return item_classes[item_type].from_dict(data)
+            item_class = item_classes[item_type]
+            args = {
+                "name": data["name"],
+                "description": data["description"],
+                "location": data["location"],
+                "contact_phone": data["contact_phone"],
+                "email": data["email"],
+                "added_by": data["added_by"]
+            }
+            for attr in item_class.attributes:
+                args[attr] = data[attr]
+            return item_class(**args)
         else:
             raise ValueError("Unknown item type")
 
@@ -116,7 +135,9 @@ def create_item_class(name, attributes):
                    f"物品说明: {self.description}\n"
                    f"所在地址: {self.location}\n"
                    f"联系人手机: {self.contact_phone}\n"
-                   f"邮箱: {self.email}\n")
+                   f"邮箱: {self.email}\n"
+                   f"物品种类: {self.__class__.__name__}\n"
+                   f"添加用户名: {self.added_by}\n")
         for attr in attributes:
             details += f"{attr}: {getattr(self, attr)}\n"
         return details
@@ -133,14 +154,15 @@ def create_item_class(name, attributes):
             "description": data["description"],
             "location": data["location"],
             "contact_phone": data["contact_phone"],
-            "email": data["email"]
+            "email": data["email"],
+            "added_by": data["added_by"]
         }
         for attr in attributes:
             args[attr] = data[attr]
-        return type(name, (Item,), args)
+        return type(name, (Item,), args)(**args)
 
     item_class = type(name, (Item,), {
-        "__init__": lambda self, name, description, location, contact_phone, email, **kwargs: Item.__init__(self, name, description, location, contact_phone, email, **kwargs),
+        "__init__": lambda self, name, description, location, contact_phone, email, added_by, **kwargs: Item.__init__(self, name, description, location, contact_phone, email, added_by, **kwargs),
         "get_details": get_details,
         "to_dict": to_dict,
         "from_dict": from_dict,
@@ -149,77 +171,32 @@ def create_item_class(name, attributes):
     item_classes[name] = item_class
     return item_class
 
-# 注册对话框
-class RegisterDialog:
-    def __init__(self, parent, users):
-        self.parent = parent
-        self.users = users
-        self.top = tk.Toplevel(parent)
-        self.top.title("注册")
-
-        self.username_var = tk.StringVar(self.top)
-        self.password_var = tk.StringVar(self.top)
-        self.address_var = tk.StringVar(self.top)
-        self.contact_info_var = tk.StringVar(self.top)
-
-        self.create_widgets()
-
-    def create_widgets(self):
-        tk.Label(self.top, text="用户名:").grid(row=0, column=0, sticky="e")
-        tk.Entry(self.top, textvariable=self.username_var).grid(row=0, column=1, sticky="w")
-
-        tk.Label(self.top, text="密码:").grid(row=1, column=0, sticky="e")
-        tk.Entry(self.top, textvariable=self.password_var, show="*").grid(row=1, column=1, sticky="w")
-
-        tk.Label(self.top, text="住址:").grid(row=2, column=0, sticky="e")
-        tk.Entry(self.top, textvariable=self.address_var).grid(row=2, column=1, sticky="w")
-
-        tk.Label(self.top, text="联系方式:").grid(row=3, column=0, sticky="e")
-        tk.Entry(self.top, textvariable=self.contact_info_var).grid(row=3, column=1, sticky="w")
-
-        tk.Button(self.top, text="注册", command=self.on_register).grid(row=4, column=0, columnspan=2)
-
-    def on_register(self):
-        username = self.username_var.get()
-        password = self.password_var.get()
-        address = self.address_var.get()
-        contact_info = self.contact_info_var.get()
-
-        if not all([username, password, address, contact_info]):
-            messagebox.showerror("错误", "请输入所有必填信息")
-            return
-
-        user = User(username, password, address, contact_info)
-        self.users.append(user)
-        save_users(self.users)
-        messagebox.showinfo("注册成功", "您的注册申请已提交，等待管理员批准。")
-        self.top.destroy()
-
 # 主窗口
 class MainWindow:
     def __init__(self, root, users, item_types):
         self.root = root
-        self.root.title("物品管理系统")
+        self.root.title("物品复活软件")
+        self.root.geometry("300x200+300+100")
 
         self.users = users
         self.item_types = item_types
 
         # 用户名输入框
-        tk.Label(root, text="用户名:").pack()
-        self.username_entry = tk.Entry(root)
+        tk.Label(root, text="用户名:", font=MiSans()).pack()
+        self.username_entry = tk.Entry(root, font=MiSans(), width=16)
         self.username_entry.pack()
 
         # 密码输入框
-        tk.Label(root, text="密码:").pack()
-        self.password_entry = tk.Entry(root, show="*")
+        tk.Label(root, text="密码:", font=MiSans()).pack()
+        self.password_entry = tk.Entry(root, font=MiSans(), width=16, show="*")
         self.password_entry.pack()
 
         # 登录按钮
-        self.login_button = tk.Button(root, text="登录", command=self.login_user)
+        self.login_button = tk.Button(root, text="登录", font=MiSans(10), command=self.login_user)
         self.login_button.pack(pady=10)
 
         # 注册按钮
-        self.register_button = tk.Button(root, text="注册", command=self.register_user)
+        self.register_button = tk.Button(root, text="注册", font=MiSans(10), command=self.register_user)
         self.register_button.pack(pady=5)
 
     def register_user(self):
@@ -242,45 +219,104 @@ class MainWindow:
         self.root.withdraw()  # 隐藏主窗口
         admin_root = tk.Toplevel(self.root)
         admin_root.title("管理员界面")
-        AdminInterface(admin_root, self.item_types)
-        admin_root.protocol("WM_DELETE_WINDOW", self.on_close_admin)  # 监听关闭事件
+        AdminInterface(admin_root, self.item_types, self.users)
+        admin_root.protocol("WM_DELETE_WINDOW", self.on_close)  # 监听关闭事件
 
     def show_user_interface(self, user):
         self.root.withdraw()  # 隐藏主窗口
         user_root = tk.Toplevel(self.root)
         user_root.title("用户界面")
-        UserInterface(user_root, self.item_types)
-        user_root.protocol("WM_DELETE_WINDOW", self.on_close_user)  # 监听关闭事件
+        UserInterface(user_root, self.item_types, user)
+        user_root.protocol("WM_DELETE_WINDOW", self.on_close)  # 监听关闭事件
 
     def on_close_admin(self):
         self.root.destroy()  # 销毁主窗口
 
-    def on_close_user(self):
-        self.root.destroy()  # 销毁主窗口
+
+# 注册对话框
+class RegisterDialog:
+    def __init__(self, parent, users):
+        self.parent = parent
+        self.users = users
+        self.top = tk.Toplevel(parent)
+        self.top.title("注册")
+        self.top.geometry("300x200+300+100")
+
+        self.username_var = tk.StringVar(self.top)
+        self.password_var = tk.StringVar(self.top)
+        self.address_var = tk.StringVar(self.top)
+        self.contact_info_var = tk.StringVar(self.top)
+
+        self.create_widgets()
+
+    def create_widgets(self):
+        tk.Label(self.top, text="用户名:", font=MiSans()).grid(row=0, column=0, sticky="e")
+        tk.Entry(self.top, textvariable=self.username_var, font=MiSans()).grid(row=0, column=1, sticky="w")
+
+        tk.Label(self.top, text="密码:", font=MiSans()).grid(row=1, column=0, sticky="e")
+        tk.Entry(self.top, textvariable=self.password_var, show="*", font=MiSans()).grid(row=1, column=1, sticky="w")
+
+        tk.Label(self.top, text="住址:", font=MiSans()).grid(row=2, column=0, sticky="e")
+        tk.Entry(self.top, textvariable=self.address_var, font=MiSans()).grid(row=2, column=1, sticky="w")
+
+        tk.Label(self.top, text="联系方式:", font=MiSans()).grid(row=3, column=0, sticky="e")
+        tk.Entry(self.top, textvariable=self.contact_info_var, font=MiSans()).grid(row=3, column=1, sticky="w")
+
+        tk.Button(self.top, text="注册", command=self.on_register, font=MiSans(10)).grid(row=4, column=0, columnspan=2)
+
+    def on_register(self):
+        username = self.username_var.get()
+        password = self.password_var.get()
+        address = self.address_var.get()
+        contact_info = self.contact_info_var.get()
+
+        if not all([username, password, address, contact_info]):
+            messagebox.showerror("错误", "请输入所有必填信息")
+            return
+
+        user = User(username, password, address, contact_info)
+        self.users.append(user)
+        save_users(self.users)
+        messagebox.showinfo("注册成功", "您的注册申请已提交，等待管理员批准。")
+        self.top.destroy()
 
 # 管理员界面
 class AdminInterface:
-    def __init__(self, root, item_types):
+    def __init__(self, root, item_types, users):
         self.root = root
+        self.root.geometry("300x300+300+100")
         self.item_types = item_types
+        self.users = users
 
-        self.listbox = tk.Listbox(root)
+        self.listbox = tk.Listbox(root, font=MiSans(), width=16, height=10)
         self.listbox.pack(pady=10)
+        self.listbox.bind("<Double-1>", self.show_item_type_details)
 
-        self.add_button = tk.Button(root, text="添加物品类型", command=self.add_item_type)
+        self.add_button = tk.Button(root, text="添加物品类型", command=self.add_item_type, font=MiSans(10))
         self.add_button.pack(side=tk.LEFT, padx=5)
 
-        self.modify_button = tk.Button(root, text="修改物品类型", command=self.modify_item_type)
-        self.modify_button.pack(side=tk.LEFT, padx=5)
+        self.approve_button = tk.Button(root, text="审核用户", command=self.approve_users, font=MiSans(10))
+        self.approve_button.pack(side=tk.LEFT, padx=5)
 
         self.load_item_types()
+        #self.load_users()
+        
+    def show_item_type_details(self, event):
+        try:
+            index = self.listbox.curselection()[0]
+            item_type = self.item_types[index]
+            details = (f"物品种类: {item_type.name}\n"
+                       f"物品属性: {', '.join(item_type.attributes)}\n")
+            messagebox.showinfo("物品种类详细信息", details)
+        except IndexError:
+            messagebox.showerror("错误", "请选择一个物品种类")
 
     def add_item_type(self):
         name = simpledialog.askstring("添加物品类型", "物品类型名称:")
         if not name:
             return
 
-        attributes = simpledialog.askstring("添加物品类型", "物品属性（用逗号分隔）:")
+        attributes = simpledialog.askstring("添加物品类型", "物品特有属性（用逗号分隔）:")
         if not attributes:
             return
 
@@ -290,29 +326,57 @@ class AdminInterface:
         self.listbox.insert(tk.END, name)
         save_item_types(self.item_types)
         create_item_class(name, attributes)  # 动态创建新的物品种类类
+        
+    def load_users(self):
+        self.listbox.delete(0, tk.END)
+        for user in self.users:
+            if not user.is_approved:
+                self.listbox.insert(tk.END, user.username)
 
-    def modify_item_type(self):
+    def show_user_details(self, event, user_listbox, users):
         try:
-            index = self.listbox.curselection()[0]
-            item_type = self.item_types[index]
-
-            name = simpledialog.askstring("修改物品类型", "物品类型名称:", initialvalue=item_type.name)
-            if not name:
-                return
-
-            attributes = simpledialog.askstring("修改物品类型", "物品属性（用逗号分隔）:", initialvalue=", ".join(item_type.attributes))
-            if not attributes:
-                return
-
-            attributes = [attr.strip() for attr in attributes.split(",")]
-            item_type.name = name
-            item_type.attributes = attributes
-            self.listbox.delete(index)
-            self.listbox.insert(index, name)
-            save_item_types(self.item_types)
-            create_item_class(name, attributes)  # 动态创建或更新物品种类类
+            index = user_listbox.curselection()[0]
+            username = user_listbox.get(index)
+            user = next(u for u in users if u.username == username)
+            details = (f"用户名: {user.username}\n"
+                       f"密码: {user.password}\n"
+                       f"住址: {user.address}\n"
+                       f"联系方式: {user.contact_info}\n"
+                       f"用户类型: {user.user_type}\n"
+                       f"是否批准: {user.is_approved}\n")
+            messagebox.showinfo("用户详细信息", details)
         except IndexError:
-            messagebox.showerror("错误", "请选择要修改的物品类型")
+            messagebox.showerror("错误", "请选择一个用户")
+
+    def approve_users(self):
+        top = tk.Toplevel(self.root)
+        top.title("审核用户")
+        top.geometry("300x300+300+100")
+
+        user_listbox = tk.Listbox(top, font=MiSans(), width=16, height=10)
+        user_listbox.pack(pady=10)
+        user_listbox.bind("<Double-1>", lambda event: self.show_user_details(event, user_listbox, self.users))  # 绑定双击事件
+
+        for user in self.users:
+            if not user.is_approved:
+                user_listbox.insert(tk.END, user.username)
+
+        def approve_selected():
+            selected_indices = user_listbox.curselection()
+            for index in selected_indices:
+                username = user_listbox.get(index)
+                user = next(u for u in self.users if u.username == username)
+                user.is_approved = True
+            save_users(self.users)
+            user_listbox.delete(0, tk.END)
+            self.load_users()
+            top.destroy()
+            self.load_item_types()
+
+        approve_button = tk.Button(top, text="批准所选用户", font=MiSans(10), command=approve_selected)
+        approve_button.pack(pady=10)
+
+        top.mainloop()
 
     def load_item_types(self):
         for item_type in self.item_types:
@@ -320,40 +384,40 @@ class AdminInterface:
 
 # 用户界面
 class UserInterface:
-    def __init__(self, root, item_types):
+    def __init__(self, root, item_types, user):
         self.root = root
+        self.root.geometry("300x300+300+100")
         self.item_types = item_types
+        self.user = user
         self.items = []
         self.filename = "items.json"
 
-        self.listbox = tk.Listbox(root)
+        self.listbox = tk.Listbox(root, font=MiSans(), width=16, height=10)
         self.listbox.pack(pady=10)
+        self.listbox.bind("<Double-1>", self.show_item_details)  # 绑定双击事件
 
-        self.add_button = tk.Button(root, text="添加物品", command=self.add_item)
-        self.add_button.pack(side=tk.LEFT, padx=5)
+        self.add_button = tk.Button(root, text="添加物品", font=MiSans(10), command=self.add_item)
+        self.add_button.pack(side=tk.LEFT, padx=10)
 
-        self.delete_button = tk.Button(root, text="删除物品", command=self.delete_item)
-        self.delete_button.pack(side=tk.LEFT, padx=5)
+        self.delete_button = tk.Button(root, text="删除物品", font=MiSans(10), command=self.delete_item)
+        self.delete_button.pack(side=tk.LEFT, padx=10)
 
-        self.show_button = tk.Button(root, text="显示物品列表", command=self.show_items)
-        self.show_button.pack(side=tk.LEFT, padx=5)
-
-        self.find_button = tk.Button(root, text="查找物品", command=self.find_item)
-        self.find_button.pack(side=tk.LEFT, padx=5)
+        self.find_button = tk.Button(root, text="查找物品", font=MiSans(10), command=self.find_item)
+        self.find_button.pack(side=tk.LEFT, padx=10)
 
         self.load_items()
 
     def add_item(self):
-        self.create_item_dialog()
-
-    def create_item_dialog(self):
         top = tk.Toplevel(self.root)
         top.title("添加物品")
+        top.geometry("300x300+300+100")
 
         category_var = tk.StringVar(top)
-        category_var.set(self.item_types[0].name if self.item_types else "")  # 默认值
-        tk.Label(top, text="物品种类:").grid(row=0, column=0, sticky="e")
+        #category_var.set(self.item_types[0].name if self.item_types else "")  # 默认值
+        category_var.set("请选择")
+        tk.Label(top, text="物品种类:", font=MiSans()).grid(row=0, column=0, sticky="e")
         category_option = tk.OptionMenu(top, category_var, *[it.name for it in self.item_types])
+        category_option.config(font=MiSans())
         category_option.grid(row=0, column=1, sticky="w")
 
         name_var = tk.StringVar(top)
@@ -362,25 +426,25 @@ class UserInterface:
         contact_phone_var = tk.StringVar(top)
         email_var = tk.StringVar(top)
 
-        name_entry = tk.Entry(top, textvariable=name_var)
-        description_entry = tk.Entry(top, textvariable=description_var)
-        location_entry = tk.Entry(top, textvariable=location_var)
-        contact_phone_entry = tk.Entry(top, textvariable=contact_phone_var)
-        email_entry = tk.Entry(top, textvariable=email_var)
+        name_entry = tk.Entry(top, textvariable=name_var, font=MiSans())
+        description_entry = tk.Entry(top, textvariable=description_var, font=MiSans())
+        location_entry = tk.Entry(top, textvariable=location_var, font=MiSans())
+        contact_phone_entry = tk.Entry(top, textvariable=contact_phone_var, font=MiSans())
+        email_entry = tk.Entry(top, textvariable=email_var, font=MiSans())
 
-        tk.Label(top, text="物品名称:").grid(row=1, column=0, sticky="e")
+        tk.Label(top, text="物品名称:", font=MiSans()).grid(row=1, column=0, sticky="e")
         name_entry.grid(row=1, column=1, sticky="w")
 
-        tk.Label(top, text="物品说明:").grid(row=2, column=0, sticky="e")
+        tk.Label(top, text="物品说明:", font=MiSans()).grid(row=2, column=0, sticky="e")
         description_entry.grid(row=2, column=1, sticky="w")
 
-        tk.Label(top, text="所在地址:").grid(row=3, column=0, sticky="e")
+        tk.Label(top, text="所在地址:", font=MiSans()).grid(row=3, column=0, sticky="e")
         location_entry.grid(row=3, column=1, sticky="w")
 
-        tk.Label(top, text="联系人手机:").grid(row=4, column=0, sticky="e")
+        tk.Label(top, text="联系人手机:", font=MiSans()).grid(row=4, column=0, sticky="e")
         contact_phone_entry.grid(row=4, column=1, sticky="w")
 
-        tk.Label(top, text="邮箱:").grid(row=5, column=0, sticky="e")
+        tk.Label(top, text="邮箱:", font=MiSans()).grid(row=5, column=0, sticky="e")
         email_entry.grid(row=5, column=1, sticky="w")
 
         # 存储属性变量
@@ -398,8 +462,8 @@ class UserInterface:
                     for attr in item_type.attributes:
                         attr_var = tk.StringVar(top)
                         attr_vars[attr] = attr_var  # 存储变量
-                        tk.Label(top, text=f"{attr}:").grid(row=row, column=0, sticky="e")
-                        tk.Entry(top, textvariable=attr_var, name=f"{attr}_var").grid(row=row, column=1, sticky="w")
+                        tk.Label(top, text=f"{attr}:", font=MiSans()).grid(row=row, column=0, sticky="e")
+                        tk.Entry(top, textvariable=attr_var, name=f"{attr}_var", font=MiSans()).grid(row=row, column=1, sticky="w")
                         row += 1
                     break
 
@@ -408,7 +472,7 @@ class UserInterface:
         # 动态计算按钮的行号
         row = 6 + len(self.item_types[0].attributes) if self.item_types else 6
 
-        tk.Button(top, text="确定", command=lambda: self.create_item(
+        tk.Button(top, text="确定", font=MiSans(10), command=lambda: self.create_item(
             category_var.get(), name_var.get(), description_var.get(), location_var.get(),
             contact_phone_var.get(), email_var.get(), top)).grid(row=row, column=0, columnspan=2)
 
@@ -425,7 +489,7 @@ class UserInterface:
                     attributes[attr] = ""  # 如果没有找到对应的输入字段，使用默认值
 
             # 创建物品实例
-            item = item_class(name, description, location, contact_phone, email, **attributes)
+            item = item_class(name, description, location, contact_phone, email, self.user.username, **attributes)
             self.items.append(item)
             self.listbox.insert(tk.END, name)
             self.save_items()
@@ -444,38 +508,76 @@ class UserInterface:
         except IndexError:
             messagebox.showerror("错误", "请选择要删除的物品")
 
-    def show_items(self):
-        items_info = ""
-        for item in self.items:
-            items_info += item.get_details() + "\n\n"
-        messagebox.showinfo("物品列表", items_info)
-
     def find_item(self):
-        keyword = simpledialog.askstring("查找物品", "请输入关键词:")
-        if not keyword:
-            return
+        top = tk.Toplevel(self.root)
+        top.title("查找物品")
+        top.geometry("300x300+300+100")
 
-        found_items = []
-        for item in self.items:
-            if keyword.lower() in item.name.lower():
-                found_items.append(item)
+        category_var = tk.StringVar(top)
+        category_var.set("请选择")  # 默认值
+        tk.Label(top, text="物品种类:", font=MiSans()).grid(row=0, column=0, sticky="e")
+        category_option = tk.OptionMenu(top, category_var, *[it.name for it in self.item_types])
+        category_option.config(font=MiSans())
+        category_option.grid(row=0, column=1, sticky="w")
 
-        if found_items:
-            items_info = ""
-            for item in found_items:
-                items_info += item.get_details() + "\n\n"
-            messagebox.showinfo("查找结果", items_info)
-        else:
-            messagebox.showinfo("未找到", "未找到包含该关键词的物品")
+        keyword_var = tk.StringVar(top)
+        tk.Label(top, text="关键词:", font=MiSans()).grid(row=1, column=0, sticky="e")
+        keyword_entry = tk.Entry(top, textvariable=keyword_var, font=MiSans())
+        keyword_entry.grid(row=1, column=1, sticky="w")
+
+        def on_search():
+            category = category_var.get()
+            keyword = keyword_var.get()
+            if category == "请选择" or not keyword:
+                messagebox.showerror("错误", "请选择物品种类并输入关键词")
+                return
+
+            found_items = []
+            for item in self.items:
+                if (item.__class__.__name__ == category and (
+                    keyword.lower() in item.name.lower() or 
+                    keyword.lower() in item.description.lower() or 
+                    keyword.lower() in item.added_by.lower()
+                )):
+                    found_items.append(item)
+
+            if found_items:
+                items_info = ""
+                for item in found_items:
+                    items_info += item.get_details() + "\n\n"
+                messagebox.showinfo("查找结果", items_info)
+            else:
+                messagebox.showinfo("未找到", "未找到包含该关键词的物品")
+            top.destroy()
+
+        tk.Button(top, text="搜索", command=on_search, font=MiSans(10)).grid(row=2, column=0, columnspan=2)
+            
+    def show_item_details(self, event):
+        try:
+            index = self.listbox.curselection()[0]
+            item = self.items[index]
+            details = (f"物品名称: {item.name}\n"
+                       f"物品说明: {item.description}\n"
+                       f"所在地址: {item.location}\n"
+                       f"联系人手机: {item.contact_phone}\n"
+                       f"邮箱: {item.email}\n"
+                       f"物品种类: {item.__class__.__name__}\n"
+                       f"添加用户: {item.added_by}\n")
+            for attr in item.__dict__:
+                if attr not in ["name", "description", "location", "contact_phone", "email", "added_by"]:
+                    details += f"{attr}: {getattr(item, attr)}\n"
+            messagebox.showinfo("物品详细信息", details)
+        except IndexError:
+            messagebox.showerror("错误", "请选择一个物品")
 
     def save_items(self):
         items_data = [item.to_dict() for item in self.items]
-        with open(self.filename, "w") as file:
-            json.dump(items_data, file, indent=4)
+        with open(self.filename, "w", encoding="utf-8") as file:
+            json.dump(items_data, file, ensure_ascii=False, indent=4)
 
     def load_items(self):
         try:
-            with open(self.filename, "r") as file:
+            with open(self.filename, "r", encoding="utf-8") as file:
                 items_data = json.load(file)
                 self.items = [Item.from_dict(data) for data in items_data]
                 self.listbox.delete(0, tk.END)
@@ -489,7 +591,9 @@ class UserInterface:
 # 主函数
 if __name__ == "__main__":
     root = tk.Tk()
-    root.title("物品管理系统")
+    root.title("物品复活软件")
+    
+    #custom_font = font.Font(family="MiSans", size=12, weight="bold")
 
     # 初始化物品类型和用户列表
     item_types = load_item_types()

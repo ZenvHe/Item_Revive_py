@@ -1,16 +1,36 @@
 [
     {
-        "name": "Food",
+        "name": "食品",
         "attributes": [
-            "expiration",
-            "quantity"
+            "保质期",
+            "数量"
         ]
     },
     {
-        "name": "Book",
+        "name": "书籍",
         "attributes": [
-            "author",
-            "publisher"
+            "作者",
+            "出版社"
+        ]
+    },
+    {
+        "name": "电子设备",
+        "attributes": [
+            "型号",
+            "品牌"
+        ]
+    },
+    {
+        "name": "衣物",
+        "attributes": [
+            "尺寸",
+            "颜色"
+        ]
+    },
+    {
+        "name": "工具",
+        "attributes": [
+            "数量"
         ]
     }
 ]
