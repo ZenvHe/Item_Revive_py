@@ -7,6 +7,14 @@ from abc import ABC, abstractmethod
 def MiSans(size=12, weight="normal"):
     return font.Font(family="MiSans", size=size, weight=weight)
 
+# 启用高 DPI 支持
+def enable_high_dpi_awareness():
+    try:
+        from ctypes import windll
+        windll.shcore.SetProcessDpiAwareness(1)
+    except Exception as e:
+        print(f"Failed to set DPI awareness: {e}")
+
 # 定义物品类型类
 class ItemType:
     def __init__(self, name, attributes):
@@ -176,7 +184,7 @@ class MainWindow:
     def __init__(self, root, users, item_types):
         self.root = root
         self.root.title("物品复活软件")
-        self.root.geometry("300x200+300+100")
+        self.root.geometry("300x300+300+100")
 
         self.users = users
         self.item_types = item_types
@@ -240,7 +248,7 @@ class RegisterDialog:
         self.users = users
         self.top = tk.Toplevel(parent)
         self.top.title("注册")
-        self.top.geometry("300x200+300+100")
+        self.top.geometry("300x300+300+100")
 
         self.username_var = tk.StringVar(self.top)
         self.password_var = tk.StringVar(self.top)
@@ -251,16 +259,16 @@ class RegisterDialog:
 
     def create_widgets(self):
         tk.Label(self.top, text="用户名:", font=MiSans()).grid(row=0, column=0, sticky="e")
-        tk.Entry(self.top, textvariable=self.username_var, font=MiSans()).grid(row=0, column=1, sticky="w")
+        tk.Entry(self.top, textvariable=self.username_var, font=MiSans(), width=12).grid(row=0, column=1, sticky="w")
 
         tk.Label(self.top, text="密码:", font=MiSans()).grid(row=1, column=0, sticky="e")
-        tk.Entry(self.top, textvariable=self.password_var, show="*", font=MiSans()).grid(row=1, column=1, sticky="w")
+        tk.Entry(self.top, textvariable=self.password_var, show="*", font=MiSans(), width=12).grid(row=1, column=1, sticky="w")
 
         tk.Label(self.top, text="住址:", font=MiSans()).grid(row=2, column=0, sticky="e")
-        tk.Entry(self.top, textvariable=self.address_var, font=MiSans()).grid(row=2, column=1, sticky="w")
+        tk.Entry(self.top, textvariable=self.address_var, font=MiSans(), width=12).grid(row=2, column=1, sticky="w")
 
         tk.Label(self.top, text="联系方式:", font=MiSans()).grid(row=3, column=0, sticky="e")
-        tk.Entry(self.top, textvariable=self.contact_info_var, font=MiSans()).grid(row=3, column=1, sticky="w")
+        tk.Entry(self.top, textvariable=self.contact_info_var, font=MiSans(), width=12).grid(row=3, column=1, sticky="w")
 
         tk.Button(self.top, text="注册", command=self.on_register, font=MiSans(10)).grid(row=4, column=0, columnspan=2)
 
@@ -284,7 +292,7 @@ class RegisterDialog:
 class AdminInterface:
     def __init__(self, root, item_types, users):
         self.root = root
-        self.root.geometry("300x300+300+100")
+        self.root.geometry("300x400+300+100")
         self.item_types = item_types
         self.users = users
 
@@ -386,7 +394,7 @@ class AdminInterface:
 class UserInterface:
     def __init__(self, root, item_types, user):
         self.root = root
-        self.root.geometry("300x300+300+100")
+        self.root.geometry("300x400+300+100")
         self.item_types = item_types
         self.user = user
         self.items = []
@@ -426,11 +434,11 @@ class UserInterface:
         contact_phone_var = tk.StringVar(top)
         email_var = tk.StringVar(top)
 
-        name_entry = tk.Entry(top, textvariable=name_var, font=MiSans())
-        description_entry = tk.Entry(top, textvariable=description_var, font=MiSans())
-        location_entry = tk.Entry(top, textvariable=location_var, font=MiSans())
-        contact_phone_entry = tk.Entry(top, textvariable=contact_phone_var, font=MiSans())
-        email_entry = tk.Entry(top, textvariable=email_var, font=MiSans())
+        name_entry = tk.Entry(top, textvariable=name_var, font=MiSans(), width=12)
+        description_entry = tk.Entry(top, textvariable=description_var, font=MiSans(), width=12)
+        location_entry = tk.Entry(top, textvariable=location_var, font=MiSans(), width=12)
+        contact_phone_entry = tk.Entry(top, textvariable=contact_phone_var, font=MiSans(), width=12)
+        email_entry = tk.Entry(top, textvariable=email_var, font=MiSans(), width=12)
 
         tk.Label(top, text="物品名称:", font=MiSans()).grid(row=1, column=0, sticky="e")
         name_entry.grid(row=1, column=1, sticky="w")
@@ -463,7 +471,7 @@ class UserInterface:
                         attr_var = tk.StringVar(top)
                         attr_vars[attr] = attr_var  # 存储变量
                         tk.Label(top, text=f"{attr}:", font=MiSans()).grid(row=row, column=0, sticky="e")
-                        tk.Entry(top, textvariable=attr_var, name=f"{attr}_var", font=MiSans()).grid(row=row, column=1, sticky="w")
+                        tk.Entry(top, textvariable=attr_var, name=f"{attr}_var", font=MiSans(), width=12).grid(row=row, column=1, sticky="w")
                         row += 1
                     break
 
@@ -522,7 +530,7 @@ class UserInterface:
 
         keyword_var = tk.StringVar(top)
         tk.Label(top, text="关键词:", font=MiSans()).grid(row=1, column=0, sticky="e")
-        keyword_entry = tk.Entry(top, textvariable=keyword_var, font=MiSans())
+        keyword_entry = tk.Entry(top, textvariable=keyword_var, font=MiSans(), width=12)
         keyword_entry.grid(row=1, column=1, sticky="w")
 
         def on_search():
@@ -590,6 +598,8 @@ class UserInterface:
 
 # 主函数
 if __name__ == "__main__":
+    enable_high_dpi_awareness()
+    
     root = tk.Tk()
     root.title("物品复活软件")
     
