@@ -488,6 +488,7 @@ class UserInterface:
                     for attr in item_type.attributes:
                         attr_var = tk.StringVar(top)
                         attr_vars[attr] = attr_var  # 存储变量
+                        tk.Label(top, text="                ", font=MiSans()).grid(row=row, column=0, sticky="e")
                         tk.Label(top, text=f"{attr}:", font=MiSans()).grid(row=row, column=0, sticky="e")
                         tk.Entry(top, textvariable=attr_var, name=f"{attr}_var", font=MiSans(), width=16).grid(row=row, column=1, sticky="w")
                         row += 1
